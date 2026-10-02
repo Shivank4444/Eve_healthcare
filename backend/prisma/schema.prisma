@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  SUCCESS
+  FAILED
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  password     String
+
+  bookings     Booking[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model DiagnosticCentre {
+  id          Int           @id @default(autoincrement())
+  name        String
+  location    String
+
+  centreTests CentreTest[]
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model DiagnosticTest {
+  id          Int           @id @default(autoincrement())
+  name        String
+  description String?
+
+  centreTests CentreTest[]
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model CentreTest {
+  id        Int              @id @default(autoincrement())
+  centreId  Int
+  testId    Int
+  price     Decimal          @db.Decimal(10, 2)
+
+  centre    DiagnosticCentre @relation(fields: [centreId], references: [id])
+  test      DiagnosticTest   @relation(fields: [testId], references: [id])
+
+  bookings  Booking[]
+
+  createdAt DateTime         @default(now())
+
+  @@unique([centreId, testId])
+}
+
+model Booking {
+  id            Int           @id @default(autoincrement())
+  userId        Int
+  centreTestId  Int
+
+  appointmentAt DateTime
+  amount        Decimal       @db.Decimal(10, 2)
+  status        BookingStatus @default(PENDING)
+
+  user          User          @relation(fields: [userId], references: [id])
+  centreTest    CentreTest    @relation(fields: [centreTestId], references: [id])
+
+  payments      Payment[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([centreTestId])
+}
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  bookingId     Int
+  transactionId String        @unique
+
+  amount        Decimal       @db.Decimal(10, 2)
+  status        PaymentStatus
+
+  booking       Booking       @relation(fields: [bookingId], references: [id])
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([bookingId])
+}
+
+model WebhookEvent {
+  id        Int      @id @default(autoincrement())
+  eventId   String   @unique
+  eventType String
+  processed  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+}
